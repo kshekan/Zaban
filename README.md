@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Zaban
+
+A personal language learning app for Arabic and Farsi. Zaban (زبان — "language" in Farsi) helps you build vocabulary, master verb conjugations, practice translations, and retain everything with spaced repetition flashcards.
+
+## Features
+
+- **Vocabulary** — Add, edit, import (CSV), and browse words with translations, transliterations, and categories
+- **Verb Conjugation** — AI-generated conjugation tables with full tense/person grids, verb metadata (root, masdar, verb type), and retry support
+- **Translation** — Reference mode for quick lookups and practice mode with AI-powered feedback on your attempts
+- **Flashcards** — SM-2 spaced repetition review for both vocabulary and conjugation cards
+- **Multi-language** — Arabic (MSA) and Farsi with per-language data isolation
+- **Dark mode** — System-aware theme switching
+
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router, TypeScript, Turbopack)
+- **Database**: SQLite via drizzle-orm + better-sqlite3
+- **AI**: Anthropic Claude API for conjugation generation, translation, and practice feedback
+- **UI**: shadcn/ui + Tailwind CSS v4
+- **Font**: IBM Plex Sans Arabic for target language text
+- **SRS**: SM-2 spaced repetition algorithm
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 20+
+- An [Anthropic API key](https://console.anthropic.com/)
+
+### Setup
 
 ```bash
+# Install dependencies
+npm install
+
+# Set your API key (or configure it later in the Settings page)
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Push the database schema
+npx drizzle-kit push
+
+# Start the dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to start learning.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Deploy to Fly.io
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Install flyctl
+curl -L https://fly.io/install.sh | sh
 
-## Learn More
+# Login and launch
+fly auth login
+fly launch --no-deploy --copy-config
 
-To learn more about Next.js, take a look at the following resources:
+# Set your API key as a secret
+fly secrets set ANTHROPIC_API_KEY=sk-ant-...
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Deploy
+fly deploy
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The app uses a persistent volume (`/data/zaban.db`) for SQLite storage on Fly.io. The machine auto-stops when idle and auto-starts on requests.
