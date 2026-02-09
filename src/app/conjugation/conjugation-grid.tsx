@@ -95,7 +95,7 @@ export function ConjugationGrid({
                   return (
                     <TableCell key={t.id} className="text-center py-2">
                       {conj ? (
-                        <TargetText className="text-lg font-semibold">
+                        <TargetText className="text-xl font-semibold">
                           {conj.voweled || conj.conjugated}
                         </TargetText>
                       ) : (

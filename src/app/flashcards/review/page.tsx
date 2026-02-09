@@ -152,7 +152,7 @@ export default function ReviewPage() {
       </div>
 
       <Card
-        className="cursor-pointer min-h-[250px] flex items-center justify-center"
+        className="cursor-pointer min-h-[200px] sm:min-h-[250px] flex items-center justify-center"
         onClick={() => setFlipped(!flipped)}
       >
         <CardContent className="text-center py-12">

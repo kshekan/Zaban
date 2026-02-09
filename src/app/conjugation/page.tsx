@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, MoreVertical, RefreshCw, Trash2 } from "lucide-react";
+import { ChevronDown, Loader2, MoreVertical, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConjugationGrid } from "./conjugation-grid";
 import { useLanguage } from "@/components/language-provider";
@@ -75,6 +75,18 @@ export default function ConjugationPage() {
   const [inputForm, setInputForm] = useState("");
   const [verbToDelete, setVerbToDelete] = useState<Verb | null>(null);
   const [retryingVerbId, setRetryingVerbId] = useState<number | null>(null);
+  const [showAllVerbs, setShowAllVerbs] = useState(false);
+
+  const COLLAPSED_LIMIT = 5;
+  const visibleVerbs = useMemo(() => {
+    if (showAllVerbs || verbs.length <= COLLAPSED_LIMIT) return verbs;
+    const collapsed = verbs.slice(0, COLLAPSED_LIMIT);
+    // Always include the selected verb even if it's beyond the limit
+    if (selectedVerb && !collapsed.find((v) => v.id === selectedVerb.id)) {
+      collapsed.push(verbs.find((v) => v.id === selectedVerb.id)!);
+    }
+    return collapsed;
+  }, [verbs, showAllVerbs, selectedVerb]);
 
   const fetchVerbs = useCallback(async () => {
     const res = await fetch(`/api/conjugation?lang=${activeLanguage}`);
@@ -224,8 +236,8 @@ export default function ConjugationPage() {
 
       {/* Verb chips */}
       {verbs.length > 0 && (
-        <div className="flex gap-1.5 flex-wrap">
-          {verbs.map((verb) => (
+        <div className="flex gap-1.5 flex-wrap items-center">
+          {visibleVerbs.map((verb) => (
             <Badge
               key={verb.id}
               variant={selectedVerb?.id === verb.id ? "default" : "secondary"}
@@ -276,6 +288,15 @@ export default function ConjugationPage() {
               </DropdownMenu>
             </Badge>
           ))}
+          {verbs.length > COLLAPSED_LIMIT && (
+            <button
+              onClick={() => setShowAllVerbs(!showAllVerbs)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5 px-1"
+            >
+              {showAllVerbs ? "Show less" : `Show all (${verbs.length})`}
+              <ChevronDown className={`h-3 w-3 transition-transform ${showAllVerbs ? "rotate-180" : ""}`} />
+            </button>
+          )}
         </div>
       )}
 
@@ -365,7 +386,7 @@ export default function ConjugationPage() {
           {conjugations.length > 0 && (
             <div>
               <p className="text-sm font-medium mb-2">Key Forms</p>
-              <div className="grid grid-cols-3 gap-px rounded-lg border bg-border overflow-hidden">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-px rounded-lg border bg-border overflow-hidden">
                 <KeyFormCell
                   title="Past"
                   forms={[

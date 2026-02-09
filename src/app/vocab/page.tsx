@@ -142,7 +142,7 @@ export default function VocabPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">Vocabulary</h1>
         <div className="flex gap-2">
           {untranslatedCount > 0 && (
@@ -173,7 +173,7 @@ export default function VocabPage() {
 
       {/* Inline add input */}
       <form
-        className="flex gap-2"
+        className="flex flex-col sm:flex-row gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           handleAdd();
@@ -231,7 +231,7 @@ export default function VocabPage() {
                   <TableCell className="font-medium">{item.english}</TableCell>
                   <TableCell>
                     {item.target ? (
-                      <TargetText className="text-xl">{item.target}</TargetText>
+                      <TargetText className="text-2xl">{item.target}</TargetText>
                     ) : (
                       <span className="italic text-muted-foreground">
                         Untranslated
