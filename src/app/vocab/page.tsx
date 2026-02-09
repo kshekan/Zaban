@@ -18,6 +18,7 @@ import { VocabImport } from "./vocab-import";
 import { toast } from "sonner";
 import { useLanguage } from "@/components/language-provider";
 import { getLanguageConfig } from "@/lib/language/config";
+import { parseColumnsConfig, getVisibleColumns } from "./columns";
 
 interface VocabItem {
   id: number;
@@ -38,12 +39,6 @@ interface VocabItem {
 export default function VocabPage() {
   const { activeLanguage } = useLanguage();
   const langConfig = getLanguageConfig(activeLanguage);
-  const colLabels = langConfig.vocabColumns ?? {
-    plural1: "Plural 1",
-    plural2: "Plural 2",
-    muradif: "Synonyms",
-    mudaad: "Antonyms",
-  };
   const [items, setItems] = useState<VocabItem[]>([]);
   const [search, setSearch] = useState("");
   const [showImport, setShowImport] = useState(false);
@@ -51,6 +46,7 @@ export default function VocabPage() {
   const [adding, setAdding] = useState(false);
   const [translatingAll, setTranslatingAll] = useState(false);
   const [translatingIds, setTranslatingIds] = useState<Set<number>>(new Set());
+  const [visibleCols, setVisibleCols] = useState<{ id: string; label: string }[]>([]);
 
   const fetchVocab = useCallback(async () => {
     const params = new URLSearchParams();
@@ -65,7 +61,53 @@ export default function VocabPage() {
     fetchVocab();
   }, [fetchVocab]);
 
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        const config = parseColumnsConfig(data.vocabColumns);
+        setVisibleCols(getVisibleColumns(config, langConfig));
+      });
+  }, [langConfig]);
+
   const untranslatedCount = items.filter((i) => !i.target).length;
+
+  const renderCell = (colId: string, item: VocabItem) => {
+    switch (colId) {
+      case "english":
+        return <span className="font-medium">{item.english}</span>;
+      case "target":
+        return item.target ? (
+          <TargetText className="text-2xl">{item.target}</TargetText>
+        ) : (
+          <span className="italic text-muted-foreground">Untranslated</span>
+        );
+      case "transliteration":
+        return <span className="text-muted-foreground">{item.transliteration}</span>;
+      case "partOfSpeech":
+        return item.partOfSpeech ? (
+          <Badge variant="secondary">{item.partOfSpeech}</Badge>
+        ) : null;
+      case "plural1":
+        return item.plural1 ? <TargetText>{item.plural1}</TargetText> : null;
+      case "plural2":
+        return item.plural2 ? <TargetText>{item.plural2}</TargetText> : null;
+      case "muradif":
+        return item.muradif ? (
+          <span className="text-green-700 dark:text-green-400">
+            <TargetText>{item.muradif}</TargetText>
+          </span>
+        ) : null;
+      case "mudaad":
+        return item.mudaad ? (
+          <span className="text-red-700 dark:text-red-400">
+            <TargetText>{item.mudaad}</TargetText>
+          </span>
+        ) : null;
+      default:
+        return null;
+    }
+  };
 
   const handleAdd = async () => {
     const words = newWords
@@ -216,26 +258,9 @@ export default function VocabPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>English</TableHead>
-              <TableHead>Target</TableHead>
-              <TableHead className="hidden sm:table-cell">
-                Transliteration
-              </TableHead>
-              <TableHead className="hidden md:table-cell">
-                Part of Speech
-              </TableHead>
-              <TableHead className="hidden lg:table-cell">
-                {colLabels.plural1}
-              </TableHead>
-              <TableHead className="hidden lg:table-cell">
-                {colLabels.plural2}
-              </TableHead>
-              <TableHead className="hidden xl:table-cell">
-                {colLabels.muradif}
-              </TableHead>
-              <TableHead className="hidden xl:table-cell">
-                {colLabels.mudaad}
-              </TableHead>
+              {visibleCols.map((col) => (
+                <TableHead key={col.id}>{col.label}</TableHead>
+              ))}
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -243,7 +268,7 @@ export default function VocabPage() {
             {items.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={visibleCols.length + 1}
                   className="text-center text-muted-foreground py-8"
                 >
                   No vocabulary items yet. Add some words to get started.
@@ -252,48 +277,11 @@ export default function VocabPage() {
             ) : (
               items.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.english}</TableCell>
-                  <TableCell>
-                    {item.target ? (
-                      <TargetText className="text-2xl">{item.target}</TargetText>
-                    ) : (
-                      <span className="italic text-muted-foreground">
-                        Untranslated
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted-foreground">
-                    {item.transliteration}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {item.partOfSpeech && (
-                      <Badge variant="secondary">{item.partOfSpeech}</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {item.plural1 && (
-                      <TargetText>{item.plural1}</TargetText>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {item.plural2 && (
-                      <TargetText>{item.plural2}</TargetText>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden xl:table-cell">
-                    {item.muradif && (
-                      <span className="text-green-700 dark:text-green-400">
-                        <TargetText>{item.muradif}</TargetText>
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden xl:table-cell">
-                    {item.mudaad && (
-                      <span className="text-red-700 dark:text-red-400">
-                        <TargetText>{item.mudaad}</TargetText>
-                      </span>
-                    )}
-                  </TableCell>
+                  {visibleCols.map((col) => (
+                    <TableCell key={col.id}>
+                      {renderCell(col.id, item)}
+                    </TableCell>
+                  ))}
                   <TableCell>
                     <div className="flex gap-1">
                       <Button
