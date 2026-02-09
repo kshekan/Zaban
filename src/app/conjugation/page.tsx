@@ -6,13 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -57,10 +50,6 @@ interface Conjugation {
   transliteration: string | null;
 }
 
-const arabicForms = [
-  "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
-];
-
 const hasTargetScript = (text: string) => /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
 
 export default function ConjugationPage() {
@@ -72,7 +61,6 @@ export default function ConjugationPage() {
   const [loading, setLoading] = useState(false);
 
   const [inputVerb, setInputVerb] = useState("");
-  const [inputForm, setInputForm] = useState("");
   const [verbToDelete, setVerbToDelete] = useState<Verb | null>(null);
   const [retryingVerbId, setRetryingVerbId] = useState<number | null>(null);
   const [showAllVerbs, setShowAllVerbs] = useState(false);
@@ -143,7 +131,6 @@ export default function ConjugationPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             infinitive: verb,
-            form: inputForm || undefined,
             languageCode: activeLanguage,
           }),
         });
@@ -162,7 +149,6 @@ export default function ConjugationPage() {
     if (successCount > 0) {
       toast.success(`Generated ${successCount} conjugation${successCount > 1 ? "s" : ""}`);
       setInputVerb("");
-      setInputForm("");
       await fetchVerbs();
       if (lastData) {
         setSelectedVerb(lastData.verb);
@@ -237,33 +223,16 @@ export default function ConjugationPage() {
           className="flex-1 font-target text-lg"
           onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
         />
-        <div className="flex gap-2">
-          {activeLanguage === "ar" && (
-            <Select value={inputForm} onValueChange={setInputForm}>
-              <SelectTrigger className="w-28">
-                <SelectValue placeholder="Form" />
-              </SelectTrigger>
-              <SelectContent>
-                {arabicForms.map((f) => (
-                  <SelectItem key={f} value={f}>
-                    Form {f}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <Button
+          onClick={handleGenerate}
+          disabled={!inputVerb.trim() || generating}
+        >
+          {generating ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            "Conjugate"
           )}
-          <Button
-            onClick={handleGenerate}
-            disabled={!inputVerb.trim() || generating}
-            className="flex-1 sm:flex-none"
-          >
-            {generating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              "Conjugate"
-            )}
-          </Button>
-        </div>
+        </Button>
       </div>
 
       {/* Verb search + chips */}

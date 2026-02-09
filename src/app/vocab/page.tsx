@@ -13,8 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { TargetText } from "@/components/target-text";
-import { Search, Upload, Trash2, RefreshCw, Languages, Loader2 } from "lucide-react";
-import { VocabImport } from "./vocab-import";
+import { Search, Trash2, RefreshCw, Languages, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/components/language-provider";
 import { getLanguageConfig } from "@/lib/language/config";
@@ -41,7 +40,6 @@ export default function VocabPage() {
   const langConfig = getLanguageConfig(activeLanguage);
   const [items, setItems] = useState<VocabItem[]>([]);
   const [search, setSearch] = useState("");
-  const [showImport, setShowImport] = useState(false);
   const [newWords, setNewWords] = useState("");
   const [adding, setAdding] = useState(false);
   const [translatingAll, setTranslatingAll] = useState(false);
@@ -214,14 +212,6 @@ export default function VocabPage() {
               Translate All ({untranslatedCount})
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowImport(true)}
-          >
-            <Upload className="h-4 w-4 mr-1" />
-            Import
-          </Button>
         </div>
       </div>
 
@@ -314,12 +304,6 @@ export default function VocabPage() {
         </Table>
       </div>
 
-      <VocabImport
-        open={showImport}
-        onOpenChange={setShowImport}
-        onSuccess={fetchVocab}
-        languageCode={activeLanguage}
-      />
     </div>
   );
 }
