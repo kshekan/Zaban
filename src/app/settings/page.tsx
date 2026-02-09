@@ -22,6 +22,38 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
 
+const PROVIDER_CONFIG: Record<
+  string,
+  {
+    label: string;
+    models: { value: string; label: string }[];
+    defaultModel: string;
+    keyPlaceholder: string;
+    envVar: string;
+  }
+> = {
+  anthropic: {
+    label: "Anthropic (Claude)",
+    models: [
+      { value: "claude-sonnet-4-5-20250929", label: "Claude Sonnet 4.5" },
+      { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5" },
+    ],
+    defaultModel: "claude-sonnet-4-5-20250929",
+    keyPlaceholder: "sk-ant-...",
+    envVar: "ANTHROPIC_API_KEY",
+  },
+  deepseek: {
+    label: "DeepSeek",
+    models: [
+      { value: "deepseek-chat", label: "DeepSeek V3" },
+      { value: "deepseek-reasoner", label: "DeepSeek R1" },
+    ],
+    defaultModel: "deepseek-chat",
+    keyPlaceholder: "sk-...",
+    envVar: "DEEPSEEK_API_KEY",
+  },
+};
+
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -39,6 +71,15 @@ export default function SettingsPage() {
 
   const updateSetting = (key: string, value: string) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const currentProvider = settings.aiProvider || "anthropic";
+  const providerConfig = PROVIDER_CONFIG[currentProvider];
+
+  const handleProviderChange = (provider: string) => {
+    updateSetting("aiProvider", provider);
+    updateSetting("aiModel", PROVIDER_CONFIG[provider].defaultModel);
+    updateSetting("aiApiKey", "");
   };
 
   const handleSave = async () => {
@@ -133,33 +174,36 @@ export default function SettingsPage() {
           <div className="space-y-2">
             <Label>Provider</Label>
             <Select
-              value={settings.aiProvider || "anthropic"}
-              onValueChange={(v) => updateSetting("aiProvider", v)}
+              value={currentProvider}
+              onValueChange={handleProviderChange}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
+                {Object.entries(PROVIDER_CONFIG).map(([key, config]) => (
+                  <SelectItem key={key} value={key}>
+                    {config.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label>Model</Label>
             <Select
-              value={settings.aiModel || "claude-sonnet-4-5-20250929"}
+              value={settings.aiModel || providerConfig.defaultModel}
               onValueChange={(v) => updateSetting("aiModel", v)}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="claude-sonnet-4-5-20250929">
-                  Claude Sonnet 4.5
-                </SelectItem>
-                <SelectItem value="claude-haiku-4-5-20251001">
-                  Claude Haiku 4.5
-                </SelectItem>
+                {providerConfig.models.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>
+                    {m.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -169,11 +213,11 @@ export default function SettingsPage() {
               type="password"
               value={settings.aiApiKey || ""}
               onChange={(e) => updateSetting("aiApiKey", e.target.value)}
-              placeholder="sk-ant-..."
+              placeholder={providerConfig.keyPlaceholder}
             />
             <p className="text-xs text-muted-foreground">
               Your API key is stored locally in the database. You can also set
-              the ANTHROPIC_API_KEY environment variable.
+              the {providerConfig.envVar} environment variable.
             </p>
           </div>
         </CardContent>
