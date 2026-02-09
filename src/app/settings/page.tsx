@@ -74,7 +74,7 @@ const PROVIDER_CONFIG: Record<
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
-  const { activeLanguage } = useLanguage();
+  const { activeLanguage, setActiveLanguage } = useLanguage();
   const langConfig = getLanguageConfig(activeLanguage);
   const langLabels = langConfig.vocabColumns;
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -222,7 +222,10 @@ export default function SettingsPage() {
             <Label>Active Language</Label>
             <Select
               value={settings.activeLanguage || "ar"}
-              onValueChange={(v) => updateSetting("activeLanguage", v)}
+              onValueChange={(v) => {
+                updateSetting("activeLanguage", v);
+                setActiveLanguage(v);
+              }}
             >
               <SelectTrigger>
                 <SelectValue />
