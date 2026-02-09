@@ -6,7 +6,19 @@ import { buildVocabTranslatePrompt } from "@/lib/ai/prompts/vocab-translate";
 import { getLanguageConfig } from "@/lib/language/config";
 import { createVocabFlashcard } from "@/lib/flashcards/create";
 
-const BATCH_SIZE = 15;
+const BATCH_SIZE = 20;
+const CONCURRENCY = 4;
+
+type TranslationResult = {
+  english: string;
+  target: string;
+  transliteration: string;
+  partOfSpeech: string;
+  plural1?: string;
+  plural2?: string;
+  muradif?: string;
+  mudaad?: string;
+};
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -56,71 +68,62 @@ export async function POST(request: NextRequest) {
   const langConfig = getLanguageConfig(languageCode);
   const ai = createAIProvider();
 
+  // Split into batches
+  const batches: (typeof wordsToTranslate)[] = [];
+  for (let i = 0; i < wordsToTranslate.length; i += BATCH_SIZE) {
+    batches.push(wordsToTranslate.slice(i, i + BATCH_SIZE));
+  }
+
   let translated = 0;
   let lastError: string | null = null;
 
-  // Process in batches
-  for (let i = 0; i < wordsToTranslate.length; i += BATCH_SIZE) {
-    const batch = wordsToTranslate.slice(i, i + BATCH_SIZE);
-    const englishWords = batch.map((w) => w.english);
-    const { system, user } = buildVocabTranslatePrompt(englishWords, langConfig);
+  // Process batches with concurrency limit
+  for (let i = 0; i < batches.length; i += CONCURRENCY) {
+    const chunk = batches.slice(i, i + CONCURRENCY);
 
-    let raw: string;
-    try {
-      raw = await ai.complete(user, system);
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : "AI request failed";
-      continue;
-    }
+    const results = await Promise.allSettled(
+      chunk.map(async (batch) => {
+        const englishWords = batch.map((w) => w.english);
+        const { system, user } = buildVocabTranslatePrompt(englishWords, langConfig);
+        const raw = await ai.complete(user, system);
+        const cleaned = raw.replace(/```json\s*\n?/g, "").replace(/```\s*$/g, "").trim();
+        const translations: TranslationResult[] = JSON.parse(cleaned);
+        if (!Array.isArray(translations) || translations.length !== batch.length) {
+          throw new Error("AI returned unexpected number of translations");
+        }
+        return { batch, translations };
+      })
+    );
 
-    // Parse JSON response - strip markdown fences if present
-    let translations: {
-      english: string;
-      target: string;
-      transliteration: string;
-      partOfSpeech: string;
-      plural1?: string;
-      plural2?: string;
-      muradif?: string;
-      mudaad?: string;
-    }[];
+    for (const result of results) {
+      if (result.status === "rejected") {
+        lastError = result.reason?.message || "AI request failed";
+        continue;
+      }
 
-    try {
-      const cleaned = raw.replace(/```json\s*\n?/g, "").replace(/```\s*$/g, "").trim();
-      translations = JSON.parse(cleaned);
-    } catch {
-      lastError = "Failed to parse AI response";
-      continue;
-    }
+      const { batch, translations } = result.value;
+      for (let j = 0; j < batch.length; j++) {
+        const word = batch[j];
+        const t = translations[j];
+        if (!t.target) continue;
 
-    if (!Array.isArray(translations) || translations.length !== batch.length) {
-      lastError = "AI returned unexpected number of translations";
-      continue;
-    }
+        db.update(schema.vocab)
+          .set({
+            target: t.target,
+            transliteration: t.transliteration || null,
+            partOfSpeech: t.partOfSpeech || null,
+            plural1: t.plural1 || null,
+            plural2: t.plural2 || null,
+            muradif: t.muradif || null,
+            mudaad: t.mudaad || null,
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(schema.vocab.id, word.id))
+          .run();
 
-    // Update each word and create flashcards
-    for (let j = 0; j < batch.length; j++) {
-      const word = batch[j];
-      const t = translations[j];
-
-      if (!t.target) continue;
-
-      db.update(schema.vocab)
-        .set({
-          target: t.target,
-          transliteration: t.transliteration || null,
-          partOfSpeech: t.partOfSpeech || null,
-          plural1: t.plural1 || null,
-          plural2: t.plural2 || null,
-          muradif: t.muradif || null,
-          mudaad: t.mudaad || null,
-          updatedAt: new Date().toISOString(),
-        })
-        .where(eq(schema.vocab.id, word.id))
-        .run();
-
-      createVocabFlashcard(word.id);
-      translated++;
+        createVocabFlashcard(word.id);
+        translated++;
+      }
     }
   }
 
