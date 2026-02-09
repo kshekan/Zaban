@@ -83,6 +83,22 @@ db.exec(`
     reviewed_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS translations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    language_code TEXT NOT NULL,
+    type TEXT NOT NULL,
+    source_text TEXT NOT NULL,
+    translation TEXT NOT NULL,
+    transliteration TEXT,
+    notes TEXT,
+    attempt TEXT,
+    score INTEGER,
+    is_correct INTEGER,
+    mistakes TEXT,
+    feedback TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
