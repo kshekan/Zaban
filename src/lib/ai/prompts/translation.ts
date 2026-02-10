@@ -2,9 +2,14 @@ import { LanguageConfig } from "@/lib/language/types";
 
 export function buildReferenceTranslationPrompt(
   text: string,
-  langConfig: LanguageConfig
+  langConfig: LanguageConfig,
+  addresseeGender?: string
 ): { system: string; user: string } {
-  const system = `You are a ${langConfig.name} language expert and translator. Provide accurate translations with transliterations. ALL ${langConfig.name} text MUST include full tashkeel/diacritical marks (harakat). Always respond with valid JSON only.`;
+  const genderInstruction = addresseeGender
+    ? `\nThe speaker is addressing a ${addresseeGender} person. Use the appropriate gendered verb forms, pronouns, and grammar for a ${addresseeGender} addressee.`
+    : "";
+
+  const system = `You are a ${langConfig.name} language expert and translator. Provide accurate translations with transliterations. ALL ${langConfig.name} text MUST include full tashkeel/diacritical marks (harakat). Always respond with valid JSON only.${genderInstruction}`;
 
   const user = `Translate the following English text to ${langConfig.name}:
 
@@ -30,9 +35,14 @@ Return ONLY the JSON object, no markdown, no explanation.`;
 export function buildPracticeScoringPrompt(
   english: string,
   userAttempt: string,
-  langConfig: LanguageConfig
+  langConfig: LanguageConfig,
+  addresseeGender?: string
 ): { system: string; user: string } {
-  const system = `You are a ${langConfig.name} language teacher. You evaluate student translation attempts, providing corrections and encouragement. ALL ${langConfig.name} text in your response MUST include full tashkeel/diacritical marks (harakat). Always respond with valid JSON only.`;
+  const genderInstruction = addresseeGender
+    ? `\nThe original English text is addressing a ${addresseeGender} person. Evaluate and correct the translation using the appropriate gendered verb forms, pronouns, and grammar for a ${addresseeGender} addressee.`
+    : "";
+
+  const system = `You are a ${langConfig.name} language teacher. You evaluate student translation attempts, providing corrections and encouragement. ALL ${langConfig.name} text in your response MUST include full tashkeel/diacritical marks (harakat). Always respond with valid JSON only.${genderInstruction}`;
 
   const user = `A student is learning ${langConfig.name}. They were asked to translate:
 

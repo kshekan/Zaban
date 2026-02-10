@@ -51,6 +51,7 @@ export function seedDefaults() {
         { key: "activeLanguage", value: "ar" },
         { key: "aiProvider", value: "anthropic" },
         { key: "aiModel", value: "claude-sonnet-4-5-20250929" },
+        { key: "addresseeGender", value: "masculine" },
       ])
       .run();
   }

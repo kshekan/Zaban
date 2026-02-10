@@ -3,12 +3,14 @@ import { createAIProvider } from "@/lib/ai/factory";
 import { buildPracticeScoringPrompt } from "@/lib/ai/prompts/translation";
 import { getLanguageConfig } from "@/lib/language/config";
 import { seedDefaults } from "@/lib/db/seed";
+import { db, schema } from "@/lib/db";
+import { eq } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   seedDefaults();
 
   const body = await request.json();
-  const { english, attempt, languageCode } = body;
+  const { english, attempt, languageCode, addresseeGender: genderOverride } = body;
 
   if (!english || !attempt) {
     return NextResponse.json(
@@ -20,10 +22,16 @@ export async function POST(request: NextRequest) {
   try {
     const langConfig = getLanguageConfig(languageCode || "ar");
     const ai = createAIProvider();
+
+    const gender = genderOverride
+      || db.select().from(schema.settings).where(eq(schema.settings.key, "addresseeGender")).get()?.value
+      || "masculine";
+
     const { system, user } = buildPracticeScoringPrompt(
       english,
       attempt,
-      langConfig
+      langConfig,
+      gender
     );
 
     const response = await ai.complete(user, system);

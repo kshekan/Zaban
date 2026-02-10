@@ -236,6 +236,25 @@ export default function SettingsPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <Label>Addressee Gender</Label>
+            <Select
+              value={settings.addresseeGender || "masculine"}
+              onValueChange={(v) => updateSetting("addresseeGender", v)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="masculine">Masculine</SelectItem>
+                <SelectItem value="feminine">Feminine</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Controls the default gendered forms (verbs, pronouns) used in
+              translations. Can be overridden per-translation.
+            </p>
+          </div>
         </CardContent>
       </Card>
 

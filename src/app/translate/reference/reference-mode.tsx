@@ -1,8 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TargetText } from "@/components/target-text";
 import { Loader2, BookmarkCheck } from "lucide-react";
@@ -25,9 +32,16 @@ interface TranslationResult {
 export function ReferenceMode() {
   const { activeLanguage } = useLanguage();
   const [text, setText] = useState("");
+  const [gender, setGender] = useState<string>("");
   const [result, setResult] = useState<TranslationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => setGender(data.addresseeGender || "masculine"));
+  }, []);
 
   const saveTranslation = async (sourceText: string, data: TranslationResult) => {
     try {
@@ -60,7 +74,7 @@ export function ReferenceMode() {
       const res = await fetch("/api/translate/reference", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, languageCode: activeLanguage }),
+        body: JSON.stringify({ text, languageCode: activeLanguage, addresseeGender: gender }),
       });
 
       if (res.ok) {
@@ -80,9 +94,20 @@ export function ReferenceMode() {
 
   return (
     <div className="space-y-4 max-w-2xl">
-      <p className="text-sm text-muted-foreground">
-        Enter English text to get an Arabic translation.
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Enter English text to get an Arabic translation.
+        </p>
+        <Select value={gender} onValueChange={setGender}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Gender" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="masculine">Masculine</SelectItem>
+            <SelectItem value="feminine">Feminine</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <Textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
