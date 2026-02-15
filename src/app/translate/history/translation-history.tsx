@@ -295,10 +295,10 @@ export function TranslationHistory() {
                     <TableCell className="font-medium max-w-[120px] sm:max-w-[200px] truncate">
                       {item.sourceText}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="max-w-[200px] sm:max-w-[300px] truncate">
                       <TargetText className="text-lg">{item.translation}</TargetText>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground">
+                    <TableCell className="hidden sm:table-cell text-muted-foreground max-w-[150px] sm:max-w-[250px] truncate">
                       {item.transliteration}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
