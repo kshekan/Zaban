@@ -11,21 +11,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { ChevronDown, Loader2, MoreVertical, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConjugationGrid } from "./conjugation-grid";
 import { useLanguage } from "@/components/language-provider";
 import { TargetText } from "@/components/target-text";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 
 interface Verb {
   id: number;
@@ -313,34 +304,26 @@ export default function ConjugationPage() {
       )}
 
       {/* Delete confirmation dialog */}
-      <AlertDialog open={!!verbToDelete} onOpenChange={(open) => !open && setVerbToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete verb?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete{" "}
-              <strong className={hasTargetScript(verbToDelete?.infinitive || "") ? "font-target" : ""}>
-                {verbToDelete?.infinitive}
-              </strong>
-              {verbToDelete?.meaning && ` (${verbToDelete.meaning})`} and all its conjugations.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (verbToDelete) {
-                  handleDelete(verbToDelete.id);
-                  setVerbToDelete(null);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={!!verbToDelete}
+        onOpenChange={(open) => !open && setVerbToDelete(null)}
+        onConfirm={() => {
+          if (verbToDelete) {
+            handleDelete(verbToDelete.id);
+            setVerbToDelete(null);
+          }
+        }}
+        title="Delete verb?"
+        description={
+          <>
+            Are you sure you want to delete{" "}
+            <strong className={hasTargetScript(verbToDelete?.infinitive || "") ? "font-target" : ""}>
+              {verbToDelete?.infinitive}
+            </strong>
+            {verbToDelete?.meaning && ` (${verbToDelete.meaning})`} and all its conjugations?
+          </>
+        }
+      />
 
       {loading && (
         <div className="flex items-center justify-center py-20">

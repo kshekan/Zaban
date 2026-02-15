@@ -16,6 +16,7 @@ import { TargetText } from "@/components/target-text";
 import { Search, Trash2, RefreshCw, Languages, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/components/language-provider";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { getLanguageConfig } from "@/lib/language/config";
 import { parseColumnsConfig, getVisibleColumns } from "./columns";
 
@@ -45,6 +46,7 @@ export default function VocabPage() {
   const [translatingAll, setTranslatingAll] = useState(false);
   const [translatingIds, setTranslatingIds] = useState<Set<number>>(new Set());
   const [visibleCols, setVisibleCols] = useState<{ id: string; label: string }[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<VocabItem | null>(null);
 
   const fetchVocab = useCallback(async () => {
     const params = new URLSearchParams();
@@ -290,7 +292,7 @@ export default function VocabPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => setDeleteTarget(item)}
                         title="Delete"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -304,6 +306,29 @@ export default function VocabPage() {
         </Table>
       </div>
 
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            handleDelete(deleteTarget.id);
+            setDeleteTarget(null);
+          }
+        }}
+        title="Delete word?"
+        description={
+          <>
+            Are you sure you want to delete{" "}
+            <strong>{deleteTarget?.english}</strong>
+            {deleteTarget?.target && (
+              <>
+                {" "}(<strong className="font-target">{deleteTarget.target}</strong>)
+              </>
+            )}
+            ?
+          </>
+        }
+      />
     </div>
   );
 }
