@@ -19,7 +19,7 @@ export function TargetText({
     <Tag
       dir={direction}
       className={cn(
-        "font-target text-[1.15em] leading-relaxed",
+        "font-target text-[1.15em] leading-[2.1]",
         direction === "rtl" && "text-right",
         className
       )}
