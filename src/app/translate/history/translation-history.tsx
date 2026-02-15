@@ -15,9 +15,10 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TargetText } from "@/components/target-text";
-import { Search, Trash2, X, Printer } from "lucide-react";
+import { Search, Trash2, X, Printer, Merge } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/components/language-provider";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 
 interface WordBreakdown {
   word: string;
@@ -70,8 +71,10 @@ export function TranslationHistory() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [printMode, setPrintMode] = useState(false);
+  const [selectionMode, setSelectionMode] = useState<"print" | "merge" | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<TranslationItem | null>(null);
+  const [merging, setMerging] = useState(false);
 
   const fetchTranslations = useCallback(async () => {
     const params = new URLSearchParams();
@@ -87,8 +90,7 @@ export function TranslationHistory() {
     fetchTranslations();
   }, [fetchTranslations]);
 
-  const handleDelete = async (id: number, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDelete = async (id: number) => {
     const res = await fetch(`/api/translations/${id}`, { method: "DELETE" });
     if (res.ok) {
       toast.success("Translation deleted");
@@ -114,14 +116,14 @@ export function TranslationHistory() {
     }
   };
 
-  const enterPrintMode = () => {
-    setPrintMode(true);
+  const enterSelectionMode = (mode: "print" | "merge") => {
+    setSelectionMode(mode);
     setSelectedIds(new Set());
     setSelectedId(null);
   };
 
-  const exitPrintMode = () => {
-    setPrintMode(false);
+  const exitSelectionMode = () => {
+    setSelectionMode(null);
     setSelectedIds(new Set());
   };
 
@@ -130,15 +132,44 @@ export function TranslationHistory() {
     window.print();
   };
 
+  const handleMerge = async () => {
+    if (selectedIds.size < 2) return;
+    setMerging(true);
+    // Preserve the table order (items are sorted by createdAt desc, so reverse for chronological)
+    const orderedIds = items
+      .filter((i) => selectedIds.has(i.id))
+      .reverse()
+      .map((i) => i.id);
+    try {
+      const res = await fetch("/api/translations/merge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: orderedIds }),
+      });
+      if (res.ok) {
+        toast.success("Translations merged");
+        exitSelectionMode();
+        fetchTranslations();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to merge");
+      }
+    } catch {
+      toast.error("Failed to merge translations");
+    } finally {
+      setMerging(false);
+    }
+  };
+
   const selectedItem = items.find((i) => i.id === selectedId) ?? null;
-  const printItems = items.filter((i) => selectedIds.has(i.id));
+  const printItems = selectionMode === "print" ? items.filter((i) => selectedIds.has(i.id)) : [];
 
   return (
     <div className="space-y-4">
       {/* Screen-only interactive UI */}
       <div className="no-print">
         <div className="flex flex-col sm:flex-row gap-2">
-          {printMode ? (
+          {selectionMode ? (
             <>
               <div className="flex flex-1 items-center gap-2">
                 <Button variant="outline" size="sm" onClick={toggleSelectAll}>
@@ -149,15 +180,26 @@ export function TranslationHistory() {
                 </span>
               </div>
               <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={handlePrint}
-                  disabled={selectedIds.size === 0}
-                >
-                  <Printer className="h-4 w-4 mr-1" />
-                  Print Selected ({selectedIds.size})
-                </Button>
-                <Button variant="outline" size="sm" onClick={exitPrintMode}>
+                {selectionMode === "print" ? (
+                  <Button
+                    size="sm"
+                    onClick={handlePrint}
+                    disabled={selectedIds.size === 0}
+                  >
+                    <Printer className="h-4 w-4 mr-1" />
+                    Print Selected ({selectedIds.size})
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={handleMerge}
+                    disabled={selectedIds.size < 2 || merging}
+                  >
+                    <Merge className="h-4 w-4 mr-1" />
+                    {merging ? "Merging..." : `Merge Selected (${selectedIds.size})`}
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={exitSelectionMode}>
                   Cancel
                 </Button>
               </div>
@@ -185,10 +227,16 @@ export function TranslationHistory() {
                   </Button>
                 ))}
                 {items.length > 0 && (
-                  <Button variant="outline" size="sm" onClick={enterPrintMode}>
-                    <Printer className="h-4 w-4 mr-1" />
-                    Print
-                  </Button>
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => enterSelectionMode("merge")}>
+                      <Merge className="h-4 w-4 mr-1" />
+                      Merge
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => enterSelectionMode("print")}>
+                      <Printer className="h-4 w-4 mr-1" />
+                      Print
+                    </Button>
+                  </>
                 )}
               </div>
             </>
@@ -201,20 +249,20 @@ export function TranslationHistory() {
           <Table>
             <TableHeader>
               <TableRow>
-                {printMode && <TableHead className="w-[40px]" />}
+                {selectionMode && <TableHead className="w-[40px]" />}
                 <TableHead>Type</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead>Translation</TableHead>
                 <TableHead className="hidden sm:table-cell">Transliteration</TableHead>
                 <TableHead className="hidden md:table-cell">Score</TableHead>
-                {!printMode && <TableHead className="w-[60px]">Actions</TableHead>}
+                {!selectionMode && <TableHead className="w-[60px]">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={printMode ? 6 : 6}
+                    colSpan={selectionMode ? 6 : 6}
                     className="text-center text-muted-foreground py-8"
                   >
                     No saved translations yet. Translate something and click the
@@ -226,17 +274,17 @@ export function TranslationHistory() {
                   <TableRow
                     key={item.id}
                     className={`cursor-pointer ${
-                      !printMode && selectedId === item.id ? "bg-muted/50" : ""
-                    } ${printMode && selectedIds.has(item.id) ? "bg-muted/50" : ""}`}
+                      !selectionMode && selectedId === item.id ? "bg-muted/50" : ""
+                    } ${selectionMode && selectedIds.has(item.id) ? "bg-muted/50" : ""}`}
                     onClick={() => {
-                      if (printMode) {
+                      if (selectionMode) {
                         toggleSelection(item.id);
                       } else {
                         setSelectedId(selectedId === item.id ? null : item.id);
                       }
                     }}
                   >
-                    {printMode && (
+                    {selectionMode && (
                       <TableCell>
                         <Checkbox
                           checked={selectedIds.has(item.id)}
@@ -270,12 +318,15 @@ export function TranslationHistory() {
                         </Badge>
                       )}
                     </TableCell>
-                    {!printMode && (
+                    {!selectionMode && (
                       <TableCell>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={(e) => handleDelete(item.id, e)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget(item);
+                          }}
                           title="Delete"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -289,6 +340,24 @@ export function TranslationHistory() {
           </Table>
         </div>
       </div>
+
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            handleDelete(deleteTarget.id);
+            setDeleteTarget(null);
+          }
+        }}
+        title="Delete translation?"
+        description={
+          <>
+            Are you sure you want to delete the translation for{" "}
+            <strong>{deleteTarget?.sourceText}</strong>?
+          </>
+        }
+      />
 
       {/* Print-only cards */}
       <div className="print-only space-y-6">
