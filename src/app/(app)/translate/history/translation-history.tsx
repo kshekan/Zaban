@@ -367,7 +367,7 @@ function PrintTranslationCard({ item }: { item: TranslationItem }) {
   return (
     <div className="print-card border rounded-lg p-6 mb-4">
       <p className="text-sm text-muted-foreground mb-1">{item.sourceText}</p>
-      <TargetText as="div" className="text-2xl font-bold mb-2">
+      <TargetText as="div" className="text-2xl mb-2">
         {item.translation}
       </TargetText>
       {item.transliteration && (
@@ -408,7 +408,7 @@ function TranslationDetail({ item, onClose }: { item: TranslationItem; onClose: 
       <CardContent className="space-y-4">
         <div>
           <p className="text-sm text-muted-foreground mb-1">{languageName}</p>
-          <TargetText as="div" className="text-xl sm:text-3xl font-bold">
+          <TargetText as="div" className="text-xl sm:text-3xl">
             {item.translation}
           </TargetText>
         </div>

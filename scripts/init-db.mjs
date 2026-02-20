@@ -1,7 +1,24 @@
 import Database from "better-sqlite3";
 import { randomUUID } from "crypto";
+import { existsSync, copyFileSync, mkdirSync } from "fs";
+import { dirname, join, basename } from "path";
 
 const dbPath = process.env.DB_PATH || "./zaban.db";
+
+// ─── Backup before any changes ──────────────────────────────────────
+if (existsSync(dbPath)) {
+  const dir = dirname(dbPath);
+  const backupDir = join(dir, "backups");
+  mkdirSync(backupDir, { recursive: true });
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const name = basename(dbPath, ".db");
+  const backupPath = join(backupDir, `${name}-${timestamp}.db`);
+
+  copyFileSync(dbPath, backupPath);
+  console.log(`Backed up database to ${backupPath}`);
+}
+
 const db = new Database(dbPath);
 
 db.pragma("journal_mode = WAL");

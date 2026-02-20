@@ -215,7 +215,7 @@ export function PracticeMode() {
               <p className="text-sm text-muted-foreground mb-1">
                 Correct translation
               </p>
-              <TargetText className="text-lg sm:text-2xl font-bold">
+              <TargetText className="text-lg sm:text-2xl">
                 {result.correctedText}
               </TargetText>
               <p className="text-sm text-muted-foreground mt-1">
