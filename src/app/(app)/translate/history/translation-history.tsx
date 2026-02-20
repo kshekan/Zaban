@@ -16,6 +16,13 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { TargetText } from "@/components/target-text";
 import { BreakdownCard, BreakdownCardCompact, type WordBreakdown } from "@/components/breakdown-card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Search, Trash2, X, Printer, Merge } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/components/language-provider";
@@ -70,6 +77,8 @@ export function TranslationHistory() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<TranslationItem | null>(null);
   const [merging, setMerging] = useState(false);
+  const [printCodeOpen, setPrintCodeOpen] = useState(false);
+  const [printCode, setPrintCode] = useState("");
 
   const fetchTranslations = useCallback(async () => {
     const params = new URLSearchParams();
@@ -124,7 +133,19 @@ export function TranslationHistory() {
 
   const handlePrint = () => {
     if (selectedIds.size === 0) return;
-    window.print();
+    setPrintCode("");
+    setPrintCodeOpen(true);
+  };
+
+  const confirmPrint = () => {
+    if (printCode === "1122") {
+      setPrintCodeOpen(false);
+      setPrintCode("");
+      window.print();
+    } else {
+      toast.error("Incorrect code");
+      setPrintCode("");
+    }
   };
 
   const handleMerge = async () => {
@@ -350,6 +371,31 @@ export function TranslationHistory() {
           </>
         }
       />
+
+      <Dialog open={printCodeOpen} onOpenChange={(open) => { if (!open) { setPrintCodeOpen(false); setPrintCode(""); } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Enter Print Code</DialogTitle>
+          </DialogHeader>
+          <Input
+            type="password"
+            placeholder="Enter code to print"
+            value={printCode}
+            onChange={(e) => setPrintCode(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") confirmPrint(); }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPrintCodeOpen(false); setPrintCode(""); }}>
+              Cancel
+            </Button>
+            <Button onClick={confirmPrint}>
+              <Printer className="h-4 w-4 mr-1" />
+              Print
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Print-only cards */}
       <div className="print-only space-y-6">
