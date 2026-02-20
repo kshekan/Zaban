@@ -3,17 +3,24 @@ import { db, schema } from "@/lib/db";
 import { eq, desc, like, or, and } from "drizzle-orm";
 import { seedDefaults } from "@/lib/db/seed";
 import { createVocabFlashcard } from "@/lib/flashcards/create";
+import { getAuthenticatedUserId } from "@/lib/auth-helpers";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   seedDefaults();
 
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const searchParams = request.nextUrl.searchParams;
   const search = searchParams.get("search");
   const lang = searchParams.get("lang") || "ar";
 
-  const langFilter = eq(schema.vocab.languageCode, lang);
+  const langFilter = and(
+    eq(schema.vocab.userId, userId),
+    eq(schema.vocab.languageCode, lang)
+  );
 
   const condition = search
     ? and(
@@ -39,6 +46,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   seedDefaults();
 
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const body = await request.json();
   const { words, english, target, transliteration, partOfSpeech, tags, notes, languageCode } = body;
 
@@ -54,6 +64,7 @@ export async function POST(request: NextRequest) {
       const result = db
         .insert(schema.vocab)
         .values({
+          userId,
           languageCode: lang,
           english: trimmed,
           target: "",
@@ -78,6 +89,7 @@ export async function POST(request: NextRequest) {
   const result = db
     .insert(schema.vocab)
     .values({
+      userId,
       languageCode: languageCode || "ar",
       english,
       target,
@@ -90,7 +102,7 @@ export async function POST(request: NextRequest) {
     .get();
 
   // Auto-create flashcard (guard in create.ts skips empty targets)
-  createVocabFlashcard(result.id);
+  createVocabFlashcard(result.id, userId);
 
   return NextResponse.json(result, { status: 201 });
 }

@@ -1,7 +1,7 @@
 import { db, schema } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 
-export function createVocabFlashcard(vocabId: number) {
+export function createVocabFlashcard(vocabId: number, userId: string) {
   const vocab = db
     .select()
     .from(schema.vocab)
@@ -29,6 +29,7 @@ export function createVocabFlashcard(vocabId: number) {
 
   db.insert(schema.flashcards)
     .values({
+      userId,
       languageCode: vocab.languageCode,
       vocabId: vocab.id,
       cardType: "vocab",
@@ -38,7 +39,7 @@ export function createVocabFlashcard(vocabId: number) {
     .run();
 }
 
-export function createConjugationFlashcards(verbId: number) {
+export function createConjugationFlashcards(verbId: number, userId: string) {
   const verb = db
     .select()
     .from(schema.verbs)
@@ -70,6 +71,7 @@ export function createConjugationFlashcards(verbId: number) {
 
     db.insert(schema.flashcards)
       .values({
+        userId,
         languageCode: verb.languageCode,
         conjugationId: conj.id,
         cardType: "conjugation",

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { createAIProvider } from "@/lib/ai/factory";
 import { buildConjugationPrompt } from "@/lib/ai/prompts/conjugation";
 import { getLanguageConfig } from "@/lib/language/config";
 import { createConjugationFlashcards } from "@/lib/flashcards/create";
+import { getAuthenticatedUserId } from "@/lib/auth-helpers";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -13,11 +14,14 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const { id } = await params;
   const verb = db
     .select()
     .from(schema.verbs)
-    .where(eq(schema.verbs.id, parseInt(id)))
+    .where(and(eq(schema.verbs.id, parseInt(id)), eq(schema.verbs.userId, userId)))
     .get();
 
   if (!verb) {
@@ -37,11 +41,14 @@ export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const { id } = await params;
   const verb = db
     .select()
     .from(schema.verbs)
-    .where(eq(schema.verbs.id, parseInt(id)))
+    .where(and(eq(schema.verbs.id, parseInt(id)), eq(schema.verbs.userId, userId)))
     .get();
 
   if (!verb) {
@@ -55,7 +62,7 @@ export async function POST(
 
   try {
     const langConfig = getLanguageConfig(verb.languageCode);
-    const ai = createAIProvider();
+    const ai = createAIProvider(userId);
     const { system, user } = buildConjugationPrompt(
       verb.infinitive,
       verb.root ?? null,
@@ -117,7 +124,7 @@ export async function POST(
         .run();
     }
 
-    createConjugationFlashcards(verb.id);
+    createConjugationFlashcards(verb.id, userId);
 
     const updatedVerb = db
       .select()
@@ -146,19 +153,24 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const { id } = await params;
 
   const verb = db
     .select()
     .from(schema.verbs)
-    .where(eq(schema.verbs.id, parseInt(id)))
+    .where(and(eq(schema.verbs.id, parseInt(id)), eq(schema.verbs.userId, userId)))
     .get();
 
   if (!verb) {
     return NextResponse.json({ error: "Verb not found" }, { status: 404 });
   }
 
-  db.delete(schema.verbs).where(eq(schema.verbs.id, parseInt(id))).run();
+  db.delete(schema.verbs)
+    .where(and(eq(schema.verbs.id, parseInt(id)), eq(schema.verbs.userId, userId)))
+    .run();
 
   return NextResponse.json({ success: true });
 }

@@ -38,21 +38,4 @@ export function seedDefaults() {
       })
       .run();
   }
-
-  const activeLang = db
-    .select()
-    .from(schema.settings)
-    .where(eq(schema.settings.key, "activeLanguage"))
-    .get();
-
-  if (!activeLang) {
-    db.insert(schema.settings)
-      .values([
-        { key: "activeLanguage", value: "ar" },
-        { key: "aiProvider", value: "anthropic" },
-        { key: "aiModel", value: "claude-sonnet-4-5-20250929" },
-        { key: "addresseeGender", value: "masculine" },
-      ])
-      .run();
-  }
 }

@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/lib/db";
 import { createVocabFlashcard } from "@/lib/flashcards/create";
+import { getAuthenticatedUserId } from "@/lib/auth-helpers";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const body = await request.json();
   const { rows, languageCode } = body as {
     rows: {
@@ -43,6 +47,7 @@ export async function POST(request: NextRequest) {
     try {
       const result = db.insert(schema.vocab)
         .values({
+          userId,
           languageCode: lang,
           english: row.english.trim(),
           target: row.target?.trim() || "",
@@ -58,7 +63,7 @@ export async function POST(request: NextRequest) {
         .returning()
         .get();
       // Guard in createVocabFlashcard skips empty targets
-      createVocabFlashcard(result.id);
+      createVocabFlashcard(result.id, userId);
       imported++;
     } catch (e) {
       errors.push({ row: i + 1, error: String(e) });

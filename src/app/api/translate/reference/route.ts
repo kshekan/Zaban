@@ -4,12 +4,16 @@ import { buildReferenceTranslationPrompt } from "@/lib/ai/prompts/translation";
 import { getLanguageConfig } from "@/lib/language/config";
 import { seedDefaults } from "@/lib/db/seed";
 import { db, schema } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { getAuthenticatedUserId } from "@/lib/auth-helpers";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   seedDefaults();
+
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
 
   const body = await request.json();
   const { text, languageCode, addresseeGender: genderOverride } = body;
@@ -23,10 +27,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const langConfig = getLanguageConfig(languageCode || "ar");
-    const ai = createAIProvider();
+    const ai = createAIProvider(userId);
 
     const gender = genderOverride
-      || db.select().from(schema.settings).where(eq(schema.settings.key, "addresseeGender")).get()?.value
+      || db.select().from(schema.settings).where(and(eq(schema.settings.userId, userId), eq(schema.settings.key, "addresseeGender"))).get()?.value
       || "masculine";
 
     const { system, user } = buildReferenceTranslationPrompt(text, langConfig, gender);

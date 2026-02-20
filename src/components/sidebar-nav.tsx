@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import {
   BookOpen,
   Languages,
@@ -10,6 +11,7 @@ import {
   Settings,
   MessageSquare,
   Menu,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -55,6 +57,29 @@ function NavLinks({ onClick }: { onClick?: () => void }) {
   );
 }
 
+function UserInfo() {
+  const { data: session } = useSession();
+
+  if (!session?.user) return null;
+
+  return (
+    <div className="mt-auto border-t pt-4 space-y-2">
+      <p className="truncate px-3 text-sm text-muted-foreground">
+        {session.user.name || session.user.email}
+      </p>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="w-full justify-start gap-2 text-muted-foreground"
+        onClick={() => signOut({ callbackUrl: "/login" })}
+      >
+        <LogOut className="h-4 w-4" />
+        Sign out
+      </Button>
+    </div>
+  );
+}
+
 export function Sidebar() {
   return (
     <aside className="hidden md:flex w-56 flex-col border-r bg-card p-4 gap-4">
@@ -63,6 +88,7 @@ export function Sidebar() {
         <span className="text-lg font-semibold">Zaban</span>
       </div>
       <NavLinks />
+      <UserInfo />
     </aside>
   );
 }
@@ -83,6 +109,7 @@ export function MobileNav() {
           <span className="text-lg font-semibold">Zaban</span>
         </div>
         <NavLinks onClick={() => setOpen(false)} />
+        <UserInfo />
       </SheetContent>
     </Sheet>
   );

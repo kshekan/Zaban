@@ -25,7 +25,7 @@ import {
   ALL_VOCAB_COLUMNS,
   parseColumnsConfig,
   type VocabColumnsConfig,
-} from "@/app/vocab/columns";
+} from "@/app/(app)/vocab/columns";
 import { useLanguage } from "@/components/language-provider";
 import { getLanguageConfig } from "@/lib/language/config";
 

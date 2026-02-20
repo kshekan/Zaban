@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/lib/db";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and } from "drizzle-orm";
+import { getAuthenticatedUserId } from "@/lib/auth-helpers";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const body = await request.json();
   const { ids } = body;
 
@@ -18,7 +22,12 @@ export async function POST(request: NextRequest) {
   const items = db
     .select()
     .from(schema.translations)
-    .where(inArray(schema.translations.id, ids))
+    .where(
+      and(
+        eq(schema.translations.userId, userId),
+        inArray(schema.translations.id, ids)
+      )
+    )
     .all();
 
   if (items.length < 2) {
@@ -58,6 +67,7 @@ export async function POST(request: NextRequest) {
   const merged = db
     .insert(schema.translations)
     .values({
+      userId,
       languageCode: items[0].languageCode,
       type: "reference",
       sourceText,
@@ -71,7 +81,12 @@ export async function POST(request: NextRequest) {
 
   // Delete originals
   db.delete(schema.translations)
-    .where(inArray(schema.translations.id, ids))
+    .where(
+      and(
+        eq(schema.translations.userId, userId),
+        inArray(schema.translations.id, ids)
+      )
+    )
     .run();
 
   return NextResponse.json(merged, { status: 201 });

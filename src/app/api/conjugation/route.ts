@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { createAIProvider } from "@/lib/ai/factory";
 import { buildConjugationPrompt } from "@/lib/ai/prompts/conjugation";
 import { getLanguageConfig } from "@/lib/language/config";
 import { seedDefaults } from "@/lib/db/seed";
 import { createConjugationFlashcards } from "@/lib/flashcards/create";
+import { getAuthenticatedUserId } from "@/lib/auth-helpers";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -13,12 +14,15 @@ export const maxDuration = 60;
 export async function GET(request: NextRequest) {
   seedDefaults();
 
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const lang = request.nextUrl.searchParams.get("lang") || "ar";
 
   const verbList = db
     .select()
     .from(schema.verbs)
-    .where(eq(schema.verbs.languageCode, lang))
+    .where(and(eq(schema.verbs.userId, userId), eq(schema.verbs.languageCode, lang)))
     .orderBy(desc(schema.verbs.createdAt))
     .all();
 
@@ -27,6 +31,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   seedDefaults();
+
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
 
   const body = await request.json();
   const { infinitive, root, form, languageCode } = body;
@@ -43,6 +50,7 @@ export async function POST(request: NextRequest) {
   const verb = db
     .insert(schema.verbs)
     .values({
+      userId,
       languageCode: lang,
       infinitive,
       root: root || null,
@@ -54,7 +62,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const langConfig = getLanguageConfig(lang);
-    const ai = createAIProvider();
+    const ai = createAIProvider(userId);
     const { system, user } = buildConjugationPrompt(
       infinitive,
       root,
@@ -121,7 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Auto-create flashcards for conjugations
-    createConjugationFlashcards(verb.id);
+    createConjugationFlashcards(verb.id, userId);
 
     // Re-fetch updated verb and conjugations
     const updatedVerb = db

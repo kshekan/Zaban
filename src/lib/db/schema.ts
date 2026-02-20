@@ -1,4 +1,62 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, primaryKey } from "drizzle-orm/sqlite-core";
+
+// ─── Auth tables (Auth.js / NextAuth) ───────────────────────────────
+
+export const users = sqliteTable("users", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name"),
+  email: text("email").unique().notNull(),
+  emailVerified: integer("email_verified", { mode: "timestamp_ms" }),
+  image: text("image"),
+  password: text("password"), // for credentials provider
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
+export const accounts = sqliteTable(
+  "accounts",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (account) => [
+    primaryKey({ columns: [account.provider, account.providerAccountId] }),
+  ]
+);
+
+export const sessions = sqliteTable("sessions", {
+  sessionToken: text("session_token").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const verificationTokens = sqliteTable(
+  "verification_tokens",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
+  },
+  (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })]
+);
+
+// ─── App data tables ────────────────────────────────────────────────
 
 export const languages = sqliteTable("languages", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -14,6 +72,9 @@ export const languages = sqliteTable("languages", {
 
 export const vocab = sqliteTable("vocab", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   languageCode: text("language_code").notNull(),
   english: text("english").notNull(),
   target: text("target").notNull(),
@@ -35,6 +96,9 @@ export const vocab = sqliteTable("vocab", {
 
 export const verbs = sqliteTable("verbs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   languageCode: text("language_code").notNull(),
   vocabId: integer("vocab_id").references(() => vocab.id, {
     onDelete: "set null",
@@ -72,6 +136,9 @@ export const conjugations = sqliteTable("conjugations", {
 
 export const flashcards = sqliteTable("flashcards", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   languageCode: text("language_code").notNull(),
   vocabId: integer("vocab_id").references(() => vocab.id, {
     onDelete: "cascade",
@@ -110,6 +177,9 @@ export const reviewHistory = sqliteTable("review_history", {
 
 export const translations = sqliteTable("translations", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   languageCode: text("language_code").notNull(),
   type: text("type", { enum: ["reference", "practice"] }).notNull(),
   sourceText: text("source_text").notNull(),
@@ -127,10 +197,17 @@ export const translations = sqliteTable("translations", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
-export const settings = sqliteTable("settings", {
-  key: text("key").primaryKey(),
-  value: text("value").notNull(),
-  updatedAt: text("updated_at")
-    .notNull()
-    .$defaultFn(() => new Date().toISOString()),
-});
+export const settings = sqliteTable(
+  "settings",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+    updatedAt: text("updated_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.key] })]
+);

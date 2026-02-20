@@ -1,16 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/lib/db";
 import { eq, desc, like, or, and } from "drizzle-orm";
+import { getAuthenticatedUserId } from "@/lib/auth-helpers";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const searchParams = request.nextUrl.searchParams;
   const search = searchParams.get("search");
   const lang = searchParams.get("lang") || "ar";
   const type = searchParams.get("type");
 
-  const conditions = [eq(schema.translations.languageCode, lang)];
+  const conditions = [
+    eq(schema.translations.userId, userId),
+    eq(schema.translations.languageCode, lang),
+  ];
 
   if (type === "reference" || type === "practice") {
     conditions.push(eq(schema.translations.type, type));
@@ -37,6 +44,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const body = await request.json();
   const { type, sourceText, translation } = body;
 
@@ -57,6 +67,7 @@ export async function POST(request: NextRequest) {
   const result = db
     .insert(schema.translations)
     .values({
+      userId,
       languageCode: body.languageCode || "ar",
       type,
       sourceText,

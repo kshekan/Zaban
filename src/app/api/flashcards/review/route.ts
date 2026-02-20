@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { sm2 } from "@/lib/srs/sm2";
+import { getAuthenticatedUserId } from "@/lib/auth-helpers";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const body = await request.json();
   const { flashcardId, quality } = body as {
     flashcardId: number;
@@ -29,7 +33,7 @@ export async function POST(request: NextRequest) {
   const card = db
     .select()
     .from(schema.flashcards)
-    .where(eq(schema.flashcards.id, flashcardId))
+    .where(and(eq(schema.flashcards.id, flashcardId), eq(schema.flashcards.userId, userId)))
     .get();
 
   if (!card) {

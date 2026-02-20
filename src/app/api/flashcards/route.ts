@@ -2,18 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/lib/db";
 import { lte, asc, eq, and, lt, or, sql } from "drizzle-orm";
 import { seedDefaults } from "@/lib/db/seed";
+import { getAuthenticatedUserId } from "@/lib/auth-helpers";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   seedDefaults();
 
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const lang = request.nextUrl.searchParams.get("lang") || "ar";
   const cardType = request.nextUrl.searchParams.get("cardType");
   const mode = request.nextUrl.searchParams.get("mode");
   const now = new Date().toISOString();
 
-  const conditions = [eq(schema.flashcards.languageCode, lang)];
+  const conditions = [
+    eq(schema.flashcards.userId, userId),
+    eq(schema.flashcards.languageCode, lang),
+  ];
   if (cardType === "vocab" || cardType === "conjugation") {
     conditions.push(eq(schema.flashcards.cardType, cardType));
   }

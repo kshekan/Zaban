@@ -5,6 +5,7 @@ import { createAIProvider } from "@/lib/ai/factory";
 import { buildVocabTranslatePrompt } from "@/lib/ai/prompts/vocab-translate";
 import { getLanguageConfig } from "@/lib/language/config";
 import { createVocabFlashcard } from "@/lib/flashcards/create";
+import { getAuthenticatedUserId } from "@/lib/auth-helpers";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -24,6 +25,9 @@ type TranslationResult = {
 };
 
 export async function POST(request: NextRequest) {
+  const userId = await getAuthenticatedUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const body = await request.json();
   const { ids, languageCode } = body as {
     ids?: number[];
@@ -45,6 +49,7 @@ export async function POST(request: NextRequest) {
       .from(schema.vocab)
       .where(
         and(
+          eq(schema.vocab.userId, userId),
           inArray(schema.vocab.id, ids),
           eq(schema.vocab.languageCode, languageCode)
         )
@@ -57,6 +62,7 @@ export async function POST(request: NextRequest) {
       .from(schema.vocab)
       .where(
         and(
+          eq(schema.vocab.userId, userId),
           eq(schema.vocab.languageCode, languageCode),
           eq(schema.vocab.target, "")
         )
@@ -69,7 +75,7 @@ export async function POST(request: NextRequest) {
   }
 
   const langConfig = getLanguageConfig(languageCode);
-  const ai = createAIProvider();
+  const ai = createAIProvider(userId);
 
   // Split into batches
   const batches: (typeof wordsToTranslate)[] = [];
@@ -121,10 +127,10 @@ export async function POST(request: NextRequest) {
             mudaad: t.mudaad || null,
             updatedAt: new Date().toISOString(),
           })
-          .where(eq(schema.vocab.id, word.id))
+          .where(and(eq(schema.vocab.id, word.id), eq(schema.vocab.userId, userId)))
           .run();
 
-        createVocabFlashcard(word.id);
+        createVocabFlashcard(word.id, userId);
         translated++;
       }
     }
