@@ -20,28 +20,46 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            console.log("[auth] Missing email or password");
+            return null;
+          }
 
-        const user = db
-          .select()
-          .from(schema.users)
-          .where(eq(schema.users.email, credentials.email as string))
-          .get();
+          const user = db
+            .select()
+            .from(schema.users)
+            .where(eq(schema.users.email, credentials.email as string))
+            .get();
 
-        if (!user || !user.password) return null;
+          if (!user) {
+            console.log("[auth] No user found for:", credentials.email);
+            return null;
+          }
 
-        const passwordMatch = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
+          if (!user.password) {
+            console.log("[auth] User has no password set");
+            return null;
+          }
 
-        if (!passwordMatch) return null;
+          const passwordMatch = await bcrypt.compare(
+            credentials.password as string,
+            user.password
+          );
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-        };
+          console.log("[auth] Password match:", passwordMatch, "for user:", user.email);
+
+          if (!passwordMatch) return null;
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          };
+        } catch (error) {
+          console.error("[auth] Authorize error:", error);
+          return null;
+        }
       },
     }),
   ],
